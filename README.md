@@ -97,13 +97,15 @@ $ python3 holistic_transceiver.py
 
 以下のオプションが利用できます。
 
-- `-i|--input`: 入力デバイスID
-- `-r|--rate`: フレームレート
-- `--width`: 横解像度
-- `--height`: 縦解像度
-- `-c|--calib_file`: キャリブレーションファイル
-- `--host`: 送信先ホスト名
-- `--port`: ポート番号(0x947d,変更する必要は通常ありません)
+- `-i|--input`: 入力デバイスID、default=0
+- `-d|--device`: 入力デバイスファイル、inputとdeviceはdeviceが優先されます。
+- `-r|--rate`: フレームレート、default=30
+- `--width`: 横解像度、default=1920
+- `--height`: 縦解像度、default=1080
+- `--codec`: コーデックを4文字で、default=MJPG
+- `-c|--calib_file`: キャリブレーションファイル、default=cameraParameters.xml
+- `--host`: 送信先ホスト名、default=192.168.11.19
+- `--port`: ポート番号(default=0x947d,変更する必要は通常ありません)
 
 
 ## 送信データ仕様

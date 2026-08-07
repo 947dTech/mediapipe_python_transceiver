@@ -16,9 +16,11 @@ from utils import holistic_results_to_dict
 
 parser = ArgumentParser()
 parser.add_argument("-i", "--input", default=0)
+parset.add_argument("-d", "--device", default="")
 parser.add_argument("-r", "--rate", default=30)
 parser.add_argument("--width", default=1920)
 parser.add_argument("--height", default=1080)
+parser.add_argument("--codec", default="MJPG")
 parser.add_argument("-c", "--calib_file", default="cameraParameters.xml")
 parser.add_argument("--host", default="192.168.11.19")
 parser.add_argument("--port", default=0x947d)
@@ -29,12 +31,31 @@ mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_holistic = mp.solutions.holistic
 
+# カメラデバイスはdeviceが指定された場合そちらを優先、開けなければその時点で中断
+if args.device == "":
+    cap = cv2.VideoCapture(args.input)
+    if not cap.isOpened():
+        print(f"[ERROR] cannot open id {args.input}")
+        exit(1)
+else:
+    cap = cv2.VideoCapture(args.device)
+    if not cap.isOpened():
+        print(f"[ERROR] cannot open device {args.device}")
+        exit(1)
+
 # webカメラの設定は個体ごとに異なるため要確認
-cap = cv2.VideoCapture(args.input)
-cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, float(args.width))
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, float(args.height))
-cap.set(cv2.CAP_PROP_FPS, float(args.rate))
+ret = cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*args.codec))
+if not ret:
+    print(f"[WARN] cannot set prop FOURCC = {args.codec}")
+ret = cap.set(cv2.CAP_PROP_FRAME_WIDTH, float(args.width))
+if not ret:
+    print(f"[WARN] cannot set prop WIDTH = {args.width}")
+ret = cap.set(cv2.CAP_PROP_FRAME_HEIGHT, float(args.height))
+if not ret:
+    print(f"[WARN] cannot set prop HEIGHT = {args.height}")
+ret = cap.set(cv2.CAP_PROP_FPS, float(args.rate))
+if not ret:
+    print(f"[WARN] cannot set prop RATE = {args.rate}")
 
 # キャリブレーションの適用
 # TODO: キャリブレーションされていなくても先に進めるようにしたほうがいい
