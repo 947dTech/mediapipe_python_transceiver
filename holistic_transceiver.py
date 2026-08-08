@@ -16,7 +16,7 @@ from utils import holistic_results_to_dict
 
 parser = ArgumentParser()
 parser.add_argument("-i", "--input", default=0)
-parset.add_argument("-d", "--device", default="")
+parser.add_argument("-d", "--device", default="")
 parser.add_argument("-r", "--rate", default=30)
 parser.add_argument("--width", default=1920)
 parser.add_argument("--height", default=1080)
