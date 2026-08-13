@@ -40,31 +40,31 @@ def holistic_results_to_dict(results, json_dict={}, timestamp=None):
     # pose
     if hasattr(results, "pose_landmarks") and results.pose_landmarks is not None:
         json_dict["pose_landmarks"] = []
-        for landmark in results.pose_landmarks.landmark:
+        for landmark in results.pose_landmarks:
             json_dict["pose_landmarks"].append(landmark_to_dict(landmark))
         json_dict["pose_landmarks_stamp"] = timestamp
     # pose3d
     if hasattr(results, "pose_world_landmarks") and results.pose_world_landmarks is not None:
         json_dict["pose_world_landmarks"] = []
-        for landmark in results.pose_world_landmarks.landmark:
+        for landmark in results.pose_world_landmarks:
             json_dict["pose_world_landmarks"].append(landmark_to_dict(landmark))
         json_dict["pose_world_landmarks_stamp"] = timestamp
     # face
     if hasattr(results, "face_landmarks") and results.face_landmarks is not None:
         json_dict["face_landmarks"] = []
-        for landmark in results.face_landmarks.landmark:
+        for landmark in results.face_landmarks:
             json_dict["face_landmarks"].append(landmark_to_dict(landmark))
         json_dict["face_landmarks_stamp"] = timestamp
     # right hand
     if hasattr(results, "right_hand_landmarks") and results.right_hand_landmarks is not None:
         json_dict["right_hand_landmarks"] = []
-        for landmark in results.right_hand_landmarks.landmark:
+        for landmark in results.right_hand_landmarks:
             json_dict["right_hand_landmarks"].append(landmark_to_dict(landmark))
         json_dict["right_hand_landmarks_stamp"] = timestamp
     # left hand
     if hasattr(results, "left_hand_landmarks") and results.left_hand_landmarks is not None:
         json_dict["left_hand_landmarks"] = []
-        for landmark in results.left_hand_landmarks.landmark:
+        for landmark in results.left_hand_landmarks:
             json_dict["left_hand_landmarks"].append(landmark_to_dict(landmark))
         json_dict["left_hand_landmarks_stamp"] = timestamp
 
