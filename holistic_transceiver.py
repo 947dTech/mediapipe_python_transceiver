@@ -2,10 +2,16 @@
 
 # holistic_trackingのandroid改造版と同じデータを出力する
 # https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/holistic.md
+# holisticのサンプルコードが現状ないので各landmarkerを参考に作成
+# https://github.com/google-ai-edge/mediapipe-samples/blob/main/examples/face_landmarker/python/%5BMediaPipe_Python_Tasks%5D_Face_Landmarker.ipynb
+# https://github.com/google-ai-edge/mediapipe-samples/blob/main/examples/pose_landmarker/python/%5BMediaPipe_Python_Tasks%5D_Pose_Landmarker.ipynb
+# https://github.com/google-ai-edge/mediapipe-samples/blob/main/examples/hand_landmarker/python/hand_landmarker.ipynb
 
 from argparse import ArgumentParser
 import json
 import math
+import os
+import subprocess
 import socket
 import time
 
@@ -13,6 +19,40 @@ import cv2
 import mediapipe as mp
 
 from utils import holistic_results_to_dict
+
+from mediapipe.tasks.python.vision import drawing_utils as mp_drawing
+from mediapipe.tasks.python.vision import drawing_styles as mp_drawing_styles
+from mediapipe.tasks.python import BaseOptions
+from mediapipe.tasks.python.vision import (
+    RunningMode,
+    FaceLandmarksConnections,
+    PoseLandmark,
+    PoseLandmarksConnections,
+    HandLandmarksConnections,
+    HolisticLandmarker,
+    HolisticLandmarkerOptions,
+    HolisticLandmarkerResult
+)
+
+
+# taskファイルのURLは以下から
+# https://github.com/google-ai-edge/mediapipe-samples-web/blob/main/src/tasks/holistic-landmarker.ts#L113
+
+task_file = 'models/holistic_landmarker.task'
+task_file_url = 'https://storage.googleapis.com/mediapipe-models/holistic_landmarker/holistic_landmarker/float16/1/holistic_landmarker.task'
+if not os.path.exists(task_file):
+    subprocess.run(['wget', '-O', task_file, task_file_url])
+
+base_options = BaseOptions(
+    model_asset_path=task_file,
+    # delegate=BaseOptions.Delegate.GPU
+    )
+options = HolisticLandmarkerOptions(
+    base_options=base_options,
+    running_mode=RunningMode.VIDEO,
+    output_face_blendshapes=True,
+    output_segmentation_mask=True,
+    )
 
 parser = ArgumentParser()
 parser.add_argument("-i", "--input", default=0)
@@ -26,10 +66,6 @@ parser.add_argument("--host", default="192.168.11.19")
 parser.add_argument("--port", default=0x947d)
 
 args = parser.parse_args()
-
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-mp_holistic = mp.solutions.holistic
 
 # カメラデバイスはdeviceが指定された場合そちらを優先、開けなければその時点で中断
 if args.device == "":
@@ -96,9 +132,7 @@ max_buf_size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
 
 prev_timestamp = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
 
-with mp_holistic.Holistic(model_complexity=1,
-                          min_detection_confidence=0.5,
-                          min_tracking_confidence=0.5) as holistic:
+with HolisticLandmarker.create_from_options(options) as holistic:
     while cap.isOpened():
         success, rawimage = cap.read()
         if not success:
@@ -108,6 +142,7 @@ with mp_holistic.Holistic(model_complexity=1,
 
         # 画像を取得した時点のタイムスタンプを保持
         timestamp = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+        timestamp_ms = int(timestamp / 1e6)
 
         # キャリブレーションの適用
         if calibrated:
@@ -119,7 +154,9 @@ with mp_holistic.Holistic(model_complexity=1,
         # pass by reference.
         image.flags.writeable = False
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        results = holistic.process(image)
+        results = holistic.detect_for_video(
+            mp.Image(image_format=mp.ImageFormat.SRGB, data=image),
+            timestamp_ms)
 
         # udp送信するデータ
         json_dict = {}
@@ -159,16 +196,26 @@ with mp_holistic.Holistic(model_complexity=1,
         mp_drawing.draw_landmarks(
             image,
             results.face_landmarks,
-            mp_holistic.FACEMESH_CONTOURS,
+            FaceLandmarksConnections.FACE_LANDMARKS_TESSELATION,
             landmark_drawing_spec=None,
-            connection_drawing_spec=mp_drawing_styles
-            .get_default_face_mesh_contours_style())
+            connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_tesselation_style())
         mp_drawing.draw_landmarks(
             image,
             results.pose_landmarks,
-            mp_holistic.POSE_CONNECTIONS,
-            landmark_drawing_spec=mp_drawing_styles
-            .get_default_pose_landmarks_style())
+            PoseLandmarksConnections.POSE_LANDMARKS,
+            landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
+        mp_drawing.draw_landmarks(
+            image,
+            results.left_hand_landmarks,
+            HandLandmarksConnections.HAND_CONNECTIONS,
+            landmark_drawing_spec=mp_drawing_styles.get_default_hand_landmarks_style(),
+            connection_drawing_spec=mp_drawing_styles.get_default_hand_connections_style())
+        mp_drawing.draw_landmarks(
+            image,
+            results.right_hand_landmarks,
+            HandLandmarksConnections.HAND_CONNECTIONS,
+            landmark_drawing_spec=mp_drawing_styles.get_default_hand_landmarks_style(),
+            connection_drawing_spec=mp_drawing_styles.get_default_hand_connections_style())
         # Flip the image horizontally for a selfie-view display.
         # cv2.imshow('MediaPipe Holistic', cv2.flip(image, 1))
         cv2.imshow('MediaPipe Holistic', image)
