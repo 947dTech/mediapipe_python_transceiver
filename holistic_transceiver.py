@@ -64,6 +64,8 @@ parser.add_argument("--codec", default="MJPG")
 parser.add_argument("-c", "--calib_file", default="cameraParameters.xml")
 parser.add_argument("--host", default="192.168.11.19")
 parser.add_argument("--port", default=0x947d)
+parser.add_argument("--msg-mode", default="legacy",
+                    choices=["legacy", "latest", "full"])
 
 args = parser.parse_args()
 
@@ -175,7 +177,22 @@ with HolisticLandmarker.create_from_options(options) as holistic:
         json_dict["gravity_stamp"] = timestamp
 
         # resultsの中身を追加
-        json_dict = holistic_results_to_dict(results, json_dict, timestamp)
+        hand2d = True
+        hand3d = True
+        legacy_face_mode = False
+        face_blendshapes = True
+        if args.msg_mode == "legacy":
+            hand3d = False
+            legacy_face_mode = True
+            face_blendshapes = False
+        elif args.msg_mode == "latest":
+            hand2d = False
+
+        json_dict = holistic_results_to_dict(
+            results, json_dict, timestamp=timestamp,
+            hand2d=hand2d, hand3d=hand3d,
+            legacy_face_mode=legacy_face_mode,
+            face_blendshapes=face_blendshapes)
 
         # UDP送信
         # json_msg = json.dumps(json_dict, ensure_ascii=False).encode("UTF-8")

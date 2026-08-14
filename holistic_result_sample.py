@@ -48,7 +48,7 @@ options = HolisticLandmarkerOptions(
 
 
 # For static images:
-def holistic(file):
+def holistic(file, msg_mode="legacy"):
     with HolisticLandmarker.create_from_options(options) as holistic:
         image = cv2.imread(file)
         image_height, image_width, _ = image.shape
@@ -103,9 +103,32 @@ def holistic(file):
         # mp_drawing.plot_landmarks(
         #     results.pose_world_landmarks, mp_holistic.POSE_CONNECTIONS)
 
+        # resultsの中身を確認
+        print('results:')
+        for attr in vars(results):
+            val = getattr(results, attr)
+            if isinstance(val, list):
+                print(f'  {attr}: {len(val)}')
+            else:
+                print(f'  {attr}')
+
         # resultsの中身をjson化する
+        hand2d = True
+        hand3d = True
+        legacy_face_mode = False
+        face_blendshapes = True
+        if msg_mode == "legacy":
+            hand3d = False
+            legacy_face_mode = True
+            face_blendshapes = False
+        elif msg_mode == "latest":
+            hand2d = False
+
         json_dict = {}
-        json_dict = holistic_results_to_dict(results, json_dict)
+        json_dict = holistic_results_to_dict(results, json_dict,
+                                             hand2d=hand2d, hand3d=hand3d,
+                                             legacy_face_mode=legacy_face_mode,
+                                             face_blendshapes=face_blendshapes)
 
         return results, json_dict
 
@@ -114,9 +137,28 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument("input")
+    parser.add_argument("--msg-mode", default="legacy",
+                        choices=["legacy", "latest", "full"])
     args = parser.parse_args()
 
-    results, json_dict = holistic(args.input)
+    results, json_dict = holistic(args.input, args.msg_mode)
 
     print(json_dict)
+    print('json:')
+    landmark_names = [
+        'pose_landmarks',
+        'pose_world_landmarks',
+        'face_landmarks',
+        'face_blendshapes',
+        'right_hand_landmarks',
+        'right_hand_world_landmarks',
+        'left_hand_landmarks',
+        'left_hand_world_landmarks',
+    ]
+    for landmark_name in landmark_names:
+        if landmark_name in json_dict:
+            print(f'  {landmark_name}: {len(json_dict[landmark_name])}')
+        else:
+            print(f'  {landmark_name}: not included')
+
     cv2.waitKey()
