@@ -106,11 +106,16 @@ $ python3 holistic_transceiver.py
 - `-c|--calib_file`: キャリブレーションファイル、default=cameraParameters.xml
 - `--host`: 送信先ホスト名、default=192.168.11.19
 - `--port`: ポート番号(default=0x947d,変更する必要は通常ありません)
+- `--msg-mode`: 送信メッセージの型を指定します。default=legacy
+    - legacy: faceを468点、handを2Dで送信します。
+    - latest: faceを478点、face blendshapesを含め、handを3Dで送信します。
+    - full: すべての内容を送信します。
 
 
 ## 送信データ仕様
 
 ポート番号0x947dに対してUDPで送信します。
+モードにより送信される内容が異なります。
 
 - camera_params
     - focal_length: キャリブレーションで求めた焦点距離(単位:ピクセル)
@@ -125,11 +130,16 @@ $ python3 holistic_transceiver.py
 - pose_world_landmarks: 三次元空間内の姿勢推定結果
 - pose_world_landmarks_stamp: タイムスタンプ(単位:ns)
 - face_landmarks: 二次元空間内の顔の姿勢推定結果
+- face_blendshapes: 表情パラメーター、52個を名前:値で格納
 - face_landmarks_stamp: タイムスタンプ(単位:ns)
 - right_hand_landmarks: 二次元空間内の右手の姿勢推定結果
 - right_hand_landmarks_stamp: タイムスタンプ(単位:ns)
+- right_hand_world_landmarks: 三次元空間内の右手の姿勢推定結果
+- right_hand_world_landmarks_stamp: タイムスタンプ(単位:ns)
 - left_hand_landmarks: 二次元空間内の左手の姿勢推定結果
 - left_hand_landmarks_stamp: タイムスタンプ(単位:ns)
+- left_hand_world_landmarks: 三次元空間内の左手の姿勢推定結果
+- left_hand_world_landmarks_stamp: タイムスタンプ(単位:ns)
 
 タイムスタンプはすべて同じ値=画像が取得された時刻を入れています。
 
