@@ -23,9 +23,8 @@ def landmark_to_dict(landmark):
     return landmark_dict
 
 
-def category_to_dict(category):
+def category_to_dict(category, category_dict):
     '''categoryをdictに変換する'''
-    category_dict = {}
     category_dict[category.category_name] = category.score
     return category_dict
 
@@ -92,9 +91,9 @@ def holistic_results_to_dict(results, json_dict={}, timestamp=None,
         hasattr(results, "face_blendshapes") and
         results.face_blendshapes is not None and face_blendshapes
     ):
-        json_dict["face_blendshapes"] = []
+        json_dict["face_blendshapes"] = {}
         for blendshape in results.face_blendshapes:
-            json_dict["face_blendshapes"].append(category_to_dict(blendshape))
+            category_to_dict(blendshape, json_dict["face_blendshapes"])
         # stampはface_landmarks_stampと同一になる
     # right hand
     if (
