@@ -110,6 +110,7 @@ $ python3 holistic_transceiver.py
     - legacy: faceを468点、handを2Dで送信します。
     - latest: faceを478点、face blendshapesを含め、handを3Dで送信します。
     - full: すべての内容を送信します。
+- `--hide-view`: 指定すると認識結果を表示しません。顔バレ防止と速度向上になります。何が認識されているかはわかりにくくなります。
 
 
 ## 送信データ仕様
