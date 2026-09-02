@@ -13,7 +13,9 @@ import math
 import os
 import subprocess
 import socket
+import threading
 import time
+import queue
 
 import cv2
 import mediapipe as mp
@@ -66,18 +68,65 @@ parser.add_argument("--host", default="192.168.11.19")
 parser.add_argument("--port", default=0x947d)
 parser.add_argument("--msg-mode", default="legacy",
                     choices=["legacy", "latest", "full"])
+parser.add_argument("--hide-view", action="store_true")
 
 args = parser.parse_args()
 
+
+class CameraStream:
+    def __init__(self, src=0):
+        self.cap = cv2.VideoCapture(src)
+        if not self.cap.isOpened():
+            raise RuntimeError()
+
+        self.q = queue.Queue(maxsize=1)
+        self.stopped = True
+        self._thread = None
+
+    def start(self):
+        if self._thread is not None and self._thread.is_alive():
+            return self  # 二重起動防止
+        self.stopped = False
+        self._thread = threading.Thread(target=self._update, daemon=True)
+        self._thread.start()
+        return self
+
+    def _update(self):
+        while not self.stopped:
+            ret, frame = self.cap.read()
+            if not ret:
+                continue
+            if not self.q.empty():
+                try:
+                    self.q.get_nowait()
+                except queue.Empty:
+                    pass
+            self.q.put((ret, frame))
+
+    def read(self):
+        return self.q.get()
+
+    def set(self, *args):
+        return self.cap.set(*args)
+
+    def isOpened(self):
+        return self.cap.isOpened()
+
+    def release(self):
+        return self.cap.release()
+
+
 # カメラデバイスはdeviceが指定された場合そちらを優先、開けなければその時点で中断
 if args.device == "":
-    cap = cv2.VideoCapture(args.input)
-    if not cap.isOpened():
+    try:
+        cap = CameraStream(args.input)
+    except Exception:
         print(f"[ERROR] cannot open id {args.input}")
         exit(1)
 else:
-    cap = cv2.VideoCapture(args.device)
-    if not cap.isOpened():
+    try:
+        cap = CameraStream(args.device)
+    except Exception:
         print(f"[ERROR] cannot open device {args.device}")
         exit(1)
 
@@ -131,6 +180,9 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1000000)
 max_buf_size = sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
 # print("buffersize: ", sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF))
+
+# スレッドを明示的に開始
+cap.start()
 
 prev_timestamp = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
 
@@ -207,38 +259,39 @@ with HolisticLandmarker.create_from_options(options) as holistic:
         else:
             sock.sendto(json_msg, (args.host, args.port))
 
-        # Draw landmark annotation on the image.
-        image.flags.writeable = True
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        mp_drawing.draw_landmarks(
-            image,
-            results.face_landmarks,
-            FaceLandmarksConnections.FACE_LANDMARKS_TESSELATION,
-            landmark_drawing_spec=None,
-            connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_tesselation_style())
-        mp_drawing.draw_landmarks(
-            image,
-            results.pose_landmarks,
-            PoseLandmarksConnections.POSE_LANDMARKS,
-            landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
-        mp_drawing.draw_landmarks(
-            image,
-            results.left_hand_landmarks,
-            HandLandmarksConnections.HAND_CONNECTIONS,
-            landmark_drawing_spec=mp_drawing_styles.get_default_hand_landmarks_style(),
-            connection_drawing_spec=mp_drawing_styles.get_default_hand_connections_style())
-        mp_drawing.draw_landmarks(
-            image,
-            results.right_hand_landmarks,
-            HandLandmarksConnections.HAND_CONNECTIONS,
-            landmark_drawing_spec=mp_drawing_styles.get_default_hand_landmarks_style(),
-            connection_drawing_spec=mp_drawing_styles.get_default_hand_connections_style())
-        # Flip the image horizontally for a selfie-view display.
-        # cv2.imshow('MediaPipe Holistic', cv2.flip(image, 1))
-        cv2.imshow('MediaPipe Holistic', image)
-        if cv2.waitKey(1) & 0xFF == 27:
-            # 27: escape
-            break
+        if not args.hide_view:
+            # Draw landmark annotation on the image.
+            image.flags.writeable = True
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            mp_drawing.draw_landmarks(
+                image,
+                results.face_landmarks,
+                FaceLandmarksConnections.FACE_LANDMARKS_TESSELATION,
+                landmark_drawing_spec=None,
+                connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_tesselation_style())
+            mp_drawing.draw_landmarks(
+                image,
+                results.pose_landmarks,
+                PoseLandmarksConnections.POSE_LANDMARKS,
+                landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
+            mp_drawing.draw_landmarks(
+                image,
+                results.left_hand_landmarks,
+                HandLandmarksConnections.HAND_CONNECTIONS,
+                landmark_drawing_spec=mp_drawing_styles.get_default_hand_landmarks_style(),
+                connection_drawing_spec=mp_drawing_styles.get_default_hand_connections_style())
+            mp_drawing.draw_landmarks(
+                image,
+                results.right_hand_landmarks,
+                HandLandmarksConnections.HAND_CONNECTIONS,
+                landmark_drawing_spec=mp_drawing_styles.get_default_hand_landmarks_style(),
+                connection_drawing_spec=mp_drawing_styles.get_default_hand_connections_style())
+            # Flip the image horizontally for a selfie-view display.
+            # cv2.imshow('MediaPipe Holistic', cv2.flip(image, 1))
+            cv2.imshow('MediaPipe Holistic', image)
+            if cv2.waitKey(1) & 0xFF == 27:
+                # 27: escape
+                break
 
         print("fps: ", 1e9 / (timestamp - prev_timestamp))
         prev_timestamp = timestamp
