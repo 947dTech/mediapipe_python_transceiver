@@ -104,6 +104,7 @@ $ python3 holistic_transceiver.py
 - `--height`: 縦解像度、default=1080
 - `--codec`: コーデックを4文字で、default=MJPG
 - `-c|--calib_file`: キャリブレーションファイル、default=cameraParameters.xml
+- `--gravity`: 重力ベクトル(3次元)、X-right Y-up Z-frontとなります。default=0.0 9.80665 0.0
 - `--host`: 送信先ホスト名、default=192.168.11.19
 - `--port`: ポート番号(default=0x947d,変更する必要は通常ありません)
 - `--msg-mode`: 送信メッセージの型を指定します。default=legacy
@@ -150,6 +151,6 @@ Androidに準拠した座標系になります。画像座標系ではありま�
 
 https://developer.android.com/develop/sensors-and-location/sensors/sensors_overview?hl=ja#sensors-coords
 
-Y-up, X-left, Z-frontです。
+Y-up, X-right, Z-frontです。
 
 まっすぐカメラを立てた場合、`(0.0, 9.8, 0.0)`となります。
