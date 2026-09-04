@@ -64,6 +64,7 @@ parser.add_argument("--width", default=1920)
 parser.add_argument("--height", default=1080)
 parser.add_argument("--codec", default="MJPG")
 parser.add_argument("-c", "--calib_file", default="cameraParameters.xml")
+parser.add_argument("--gravity", nargs=3, type=float, default=[0.0, 9.80665, 0.0])
 parser.add_argument("--host", default="192.168.11.19")
 parser.add_argument("--port", default=0x947d)
 parser.add_argument("--msg-mode", default="legacy",
@@ -225,7 +226,7 @@ with HolisticLandmarker.create_from_options(options) as holistic:
         }
 
         # 重力方向、android端末に準拠、Y up X right Z front
-        json_dict["gravity"] = [0.0, 9.80665, 0.0]
+        json_dict["gravity"] = args.gravity
         json_dict["gravity_stamp"] = timestamp
 
         # resultsの中身を追加
