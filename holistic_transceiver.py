@@ -164,13 +164,22 @@ if not aspect_eq:
     print(f"In {calib_file}: {calib_width} x {calib_height}")
     exit(1)
 
-if args.width != int(calib_width):
+if int(args.width) != int(calib_width):
     print("scale camera matrix")
     print(f"For camera device: {args.width} x {args.height}")
     print(f"In {calib_file}: {calib_width} x {calib_height}")
     image_scale = float(args.width) / calib_width
     camera_matrix *= image_scale
     camera_matrix[2, 2] = 1.0
+
+image_size = (int(args.width), int(args.height))
+new_camera_matrix, roi = cv2.getOptimalNewCameraMatrix(
+    camera_matrix, dist_coeffs, image_size, 0, image_size)
+
+print("before undistort:")
+print(camera_matrix)
+print("after undistort:")
+print(new_camera_matrix)
 
 calibrated = True
 
@@ -201,7 +210,8 @@ with HolisticLandmarker.create_from_options(options) as holistic:
 
         # キャリブレーションの適用
         if calibrated:
-            image = cv2.undistort(rawimage, camera_matrix, dist_coeffs)
+            image = cv2.undistort(rawimage, camera_matrix, dist_coeffs,
+                                  None, new_camera_matrix)
         else:
             image = rawimage
 
@@ -218,11 +228,18 @@ with HolisticLandmarker.create_from_options(options) as holistic:
 
         # 解像度と焦点距離、キャリブレーション必須
         json_dict["camera_params"] = {
-            "focal_length": camera_matrix[0, 0],
-            "cx": camera_matrix[0, 2],
-            "cy": camera_matrix[1, 2],
+            # "focal_length": new_camera_matrix[0, 0],
+            "fx": new_camera_matrix[0, 0],
+            "fy": new_camera_matrix[1, 1],
+            "cx": new_camera_matrix[0, 2],
+            "cy": new_camera_matrix[1, 2],
             "frame_width": image.shape[1],
-            "frame_height": image.shape[0]
+            "frame_height": image.shape[0],
+            # NOTE: androidは「デバイスに対するセンサーの向き」を
+            #  90度刻みのuintで保持している。
+            #  これによって画像を回転させているために受け取った側で回転処理が必要。
+            #  python版では明示的に0度であることを伝える。
+            "rotation_degrees": 0
         }
 
         # 重力方向、android端末に準拠、Y up X right Z front
